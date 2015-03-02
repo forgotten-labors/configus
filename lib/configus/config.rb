@@ -10,12 +10,15 @@ module Configus
 
       (class << self; self; end).class_eval do
         config.each_pair do |key, value|
-          if value.is_a? Hash
+          case value
+          when Hash
             value = Config.new(value)
+          when Proc
+            value
           end
 
           define_method key.to_sym do
-            value
+            value.is_a?(Proc) ? instance_exec(&value) : value
           end
         end
       end
@@ -26,7 +29,11 @@ module Configus
     end
 
     def to_hash
-      @config
+      hash = {}
+      @config.each_pair do |key, value|
+        hash[key] = value.respond_to?(:to_hash) ? value.to_hash : value
+      end
+      hash
     end
 
     def each_pair(&block)
@@ -35,7 +42,7 @@ module Configus
     end
 
     def method_missing(meth, *args, &blk)
-      raise "'#{meth}' key does not exists in your configus"
+      raise "'#{meth}' key does not exist in your configus"
     end
   end
 end
